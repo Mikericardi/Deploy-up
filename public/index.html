@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Github Deployer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+</head>
+<body class="bg-gray-900 text-gray-200 font-sans min-h-screen flex flex-col">
+
+    <!-- Navbar -->
+    <nav class="bg-gray-800 border-b border-gray-700 p-4 sticky top-0 z-40">
+        <div class="container mx-auto flex justify-between items-center max-w-2xl">
+            <h1 class="text-xl font-bold text-blue-400 flex items-center gap-2">
+                <i class="fab fa-github"></i> Auto Deployer Github
+            </h1>
+            <div class="flex gap-2">
+                <button onclick="openSettings()" class="bg-gray-700 hover:bg-gray-600 text-white p-2 rounded-full transition w-10 h-10 flex items-center justify-center" title="Pengaturan User">
+                    <i class="fas fa-cog"></i>
+                </button>
+                <a href="/tutorial.html" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-sm transition flex items-center gap-2">
+                    <i class="fas fa-question-circle"></i> Panduan
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="flex-grow flex items-center justify-center p-4">
+        <div class="bg-gray-800 p-6 md:p-8 rounded-xl shadow-2xl w-full max-w-md border border-gray-700 relative">
+            
+            <h2 class="text-2xl font-bold mb-6 text-white text-center">Deploy Project</h2>
+            
+            <form id="deployForm" class="space-y-5">
+                <!-- Repo Name -->
+                <div>
+                    <label class="block text-sm font-medium mb-1 text-gray-300">Nama Repository</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500"><i class="fas fa-folder"></i></span>
+                        <input type="text" id="repoName" required placeholder="my-awesome-project" 
+                            class="w-full pl-10 p-3 rounded-lg bg-gray-700 border border-gray-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none text-white transition">
+                    </div>
+                </div>
+
+                <!-- Visibility -->
+                <div>
+                    <label class="block text-sm font-medium mb-1 text-gray-300">Visibilitas</label>
+                    <div class="flex gap-4">
+                        <label class="flex items-center space-x-2 cursor-pointer">
+                            <input type="radio" name="visibility" value="public" checked class="text-blue-500 focus:ring-blue-500 bg-gray-700 border-gray-600">
+                            <span>Public</span>
+                        </label>
+                        <label class="flex items-center space-x-2 cursor-pointer">
+                            <input type="radio" name="visibility" value="private" class="text-blue-500 focus:ring-blue-500 bg-gray-700 border-gray-600">
+                            <span>Private</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- GitHub Token (Hidden Logic: Will be auto-filled) -->
+                <div>
+                    <label class="block text-sm font-medium mb-1 text-gray-300">
+                        GitHub Token 
+                        <span id="tokenStatus" class="text-xs ml-2 text-yellow-500 hidden">(Menggunakan Token Tersimpan)</span>
+                    </label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500"><i class="fas fa-key"></i></span>
+                        <input type="password" id="tokenInput" required placeholder="ghp_xxxxxxxxxxxx" 
+                            class="w-full pl-10 p-3 rounded-lg bg-gray-700 border border-gray-600 focus:border-blue-500 focus:outline-none text-white transition">
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1">Token ini hanya digunakan untuk sesi ini.</p>
+                </div>
+
+                <!-- File Upload -->
+                <div class="border-2 border-dashed border-gray-600 rounded-lg p-6 text-center hover:bg-gray-700/50 transition cursor-pointer" onclick="document.getElementById('file').click()">
+                    <input type="file" id="file" accept=".zip" required class="hidden" onchange="updateFileName(this)">
+                    <i class="fas fa-cloud-upload-alt text-3xl text-blue-400 mb-2"></i>
+                    <p class="text-sm text-gray-300 font-medium">Klik untuk upload .zip</p>
+                    <p id="fileNameDisplay" class="text-xs text-gray-500 mt-1">Maks 100MB</p>
+                </div>
+
+                <!-- Submit Button -->
+                <button type="submit" id="btnSubmit" 
+                    class="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-bold py-3 px-4 rounded-lg shadow-lg transform transition hover:scale-[1.02] active:scale-95">
+                    🚀 Mulai Deploy
+                </button>
+            </form>
+
+            <!-- Status Log -->
+            <div id="status" class="mt-6 hidden p-4 rounded-lg bg-gray-900 border border-gray-700 text-sm animate-fade-in"></div>
+        </div>
+    </div>
+
+    <!-- MODAL SETTINGS -->
+    <div id="settingsModal" class="fixed inset-0 bg-black bg-opacity-70 z-50 hidden flex items-center justify-center backdrop-blur-sm">
+        <div class="bg-gray-800 p-6 rounded-xl shadow-2xl w-full max-w-sm border border-gray-600 transform transition-all scale-100">
+            <div class="flex justify-between items-center mb-4 border-b border-gray-700 pb-2">
+                <h3 class="text-lg font-bold text-white"><i class="fas fa-cog"></i> Pengaturan User</h3>
+                <button onclick="closeSettings()" class="text-gray-400 hover:text-white transition"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            
+            <p class="text-xs text-gray-400 mb-4">
+                Simpan token Anda di sini agar tidak perlu mengetik ulang setiap kali deploy. Data disimpan di browser Anda (LocalStorage).
+            </p>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium mb-1 text-gray-300">Default GitHub Token</label>
+                    <input type="password" id="savedTokenInput" placeholder="ghp_xxxxxxxxxxxx" 
+                        class="w-full p-2 rounded bg-gray-700 border border-gray-600 focus:border-green-500 focus:outline-none text-white">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium mb-1 text-gray-300">Default Visibility</label>
+                    <select id="savedVisibility" class="w-full p-2 rounded bg-gray-700 border border-gray-600 text-white">
+                        <option value="public">Public</option>
+                        <option value="private">Private</option>
+                    </select>
+                </div>
+
+                <button onclick="saveUserSettings()" 
+                    class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition">
+                    <i class="fas fa-save"></i> Simpan Pengaturan
+                </button>
+                
+                <button onclick="clearUserSettings()" 
+                    class="w-full border border-red-500 text-red-400 hover:bg-red-500/10 font-bold py-2 px-4 rounded transition text-sm">
+                    Hapus Data Tersimpan
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- LOGIKA SETTINGS / LOCALSTORAGE ---
+
+        // 1. Saat Halaman Dimuat: Cek apakah ada data tersimpan
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedToken = localStorage.getItem('jenius_gh_token');
+            const savedVis = localStorage.getItem('jenius_gh_vis');
+
+            if (savedToken) {
+                // Isi otomatis input di form utama
+                document.getElementById('tokenInput').value = savedToken;
+                // Isi juga input di dalam modal
+                document.getElementById('savedTokenInput').value = savedToken;
+                
+                // Beri indikator visual
+                document.getElementById('tokenStatus').classList.remove('hidden');
+                document.getElementById('tokenStatus').innerText = "✅ Terisi dari Auto-Save";
+            }
+
+            if (savedVis) {
+                // Set radio button di form utama
+                document.querySelector(`input[name="visibility"][value="${savedVis}"]`).checked = true;
+                // Set select option di modal
+                document.getElementById('savedVisibility').value = savedVis;
+            }
+        });
+
+        // 2. Fungsi Buka/Tutup Modal
+        function openSettings() {
+            document.getElementById('settingsModal').classList.remove('hidden');
+        }
+        function closeSettings() {
+            document.getElementById('settingsModal').classList.add('hidden');
+        }
+
+        // 3. Fungsi Simpan Settings
+        function saveUserSettings() {
+            const token = document.getElementById('savedTokenInput').value;
+            const vis = document.getElementById('savedVisibility').value;
+
+            if (!token) {
+                alert("Token tidak boleh kosong!");
+                return;
+            }
+
+            localStorage.setItem('jenius_gh_token', token);
+            localStorage.setItem('jenius_gh_vis', vis);
+
+            // Update UI langsung
+            document.getElementById('tokenInput').value = token;
+            document.querySelector(`input[name="visibility"][value="${vis}"]`).checked = true;
+            document.getElementById('tokenStatus').classList.remove('hidden');
+            document.getElementById('tokenStatus').innerText = "✅ Terisi dari Auto-Save";
+
+            alert("Pengaturan berhasil disimpan!");
+            closeSettings();
+        }
+
+        // 4. Fungsi Hapus Settings
+        function clearUserSettings() {
+            if(confirm("Yakin ingin menghapus data tersimpan?")) {
+                localStorage.removeItem('jenius_gh_token');
+                localStorage.removeItem('jenius_gh_vis');
+                
+                // Reset UI
+                document.getElementById('tokenInput').value = "";
+                document.getElementById('savedTokenInput').value = "";
+                document.getElementById('tokenStatus').classList.add('hidden');
+                
+                alert("Data dihapus.");
+                closeSettings();
+            }
+        }
+
+        // --- LOGIKA FILE UPLOAD UI ---
+        function updateFileName(input) {
+            const display = document.getElementById('fileNameDisplay');
+            if (input.files && input.files[0]) {
+                display.innerText = "📄 " + input.files[0].name;
+                display.classList.add('text-green-400');
+            } else {
+                display.innerText = "Maks 100MB";
+                display.classList.remove('text-green-400');
+            }
+        }
+
+        // --- LOGIKA DEPLOY (SAMA SEPERTI SEBELUMNYA) ---
+        document.getElementById('deployForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const btn = document.getElementById('btnSubmit');
+            const statusDiv = document.getElementById('status');
+            
+            // Ambil value visibility dari radio button
+            const visibility = document.querySelector('input[name="visibility"]:checked').value;
+
+            const formData = new FormData();
+            formData.append('githubToken', document.getElementById('tokenInput').value);
+            formData.append('repoName', document.getElementById('repoName').value);
+            formData.append('visibility', visibility);
+            formData.append('projectZip', document.getElementById('file').files[0]);
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sedang Memproses...';
+            btn.classList.add('opacity-75');
+            
+            statusDiv.classList.remove('hidden');
+            statusDiv.innerHTML = '<span class="text-yellow-400 flex items-center gap-2"><i class="fas fa-sync fa-spin"></i> Sedang mengupload dan push ke GitHub...</span>';
+
+            try {
+                const response = await fetch('/deploy', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                                if (result.success) {
+                    let icon = "fa-check-circle";
+                    let color = "text-green-500";
+                    let title = "Berhasil!";
+
+                    // Jika tidak ada perubahan (Smart Update Detection)
+                    if (result.noChanges) {
+                        icon = "fa-info-circle";
+                        color = "text-blue-500";
+                        title = "Up-to-Date";
+                    }
+
+                    statusDiv.innerHTML = `
+                        <div class="text-center animate-pulse-once">
+                            <i class="fas ${icon} text-4xl ${color} mb-2"></i>
+                            <h3 class="${color.replace('500', '400')} font-bold text-lg">${title}</h3>
+                            <p class="text-gray-300 text-sm mb-2">${result.message}</p>
+                            <a href="${result.repoUrl}" target="_blank" class="inline-block mt-1 bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded transition border border-gray-600">
+                                <i class="fab fa-github"></i> Buka Repository
+                            </a>
+                        </div>
+                    `;
+                    
+                    // Reset form jika sukses, tapi kalau noChanges mungkin user mau upload ulang zip lain, jadi opsional
+                    if (!result.noChanges) {
+                         document.getElementById('file').value = "";
+                         document.getElementById('fileNameDisplay').innerText = "Maks 100MB";
+                    }
+
+                } else {
+                    statusDiv.innerHTML = `
+                        <div class="flex items-start gap-3">
+                            <i class="fas fa-exclamation-triangle text-red-500 mt-1"></i>
+                            <div>
+                                <h3 class="text-red-400 font-bold">Gagal Deploy</h3>
+                                <p class="text-gray-400 text-sm">${result.error}</p>
+                            </div>
+                        </div>
+                    `;
+                }
+            } catch (err) {
+                statusDiv.innerHTML = `<span class="text-red-400 font-bold">❌ Error Koneksi: Server tidak merespon.</span>`;
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '🚀 Mulai Deploy';
+                btn.classList.remove('opacity-75');
+            }
+        });
+    </script>
+</body>
+</html>
